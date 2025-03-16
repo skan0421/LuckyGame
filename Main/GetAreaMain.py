@@ -1,29 +1,76 @@
-import cv2
-import numpy as np
-import mss
-from pynput import mouse
+import cv2                               # OpenCV: 이미지 처리 라이브러리
+import numpy as np                       # 넘파이: 배열 처리 라이브러리
+import mss                               # mss: 화면 캡쳐 라이브러리
+from pynput import mouse                 # pynput: 마우스 이벤트 처리 라이브러리
 import os
 
 # -----------------------------
-# 1. 전역 변수 및 함수 정의
+# 1. 영역 분할을 위한 클래스 정의 (예: UNIT_RANGE 전용)
 # -----------------------------
-points = []  # 마우스 클릭 좌표 저장 (전체 화면 기준)
+class RegionGrid:
+    def __init__(self, image, rows, cols):
+        """
+        image: 캡쳐된 이미지 (영역)
+        rows, cols: 분할할 행과 열 개수
+        """
+        self.image = image
+        self.rows = rows
+        self.cols = cols
+
+    def subdivide(self):
+        """
+        이미지를 rows x cols 격자로 나누고,
+        각 셀의 중앙 좌표와 그리드가 그려진 이미지를 반환.
+        """
+        height, width, _ = self.image.shape
+        cell_width = width / self.cols
+        cell_height = height / self.rows
+        grid_img = self.image.copy()
+        centers = []
+
+        # 가로선 그리기
+        for r in range(self.rows + 1):
+            y = int(r * cell_height)
+            cv2.line(grid_img, (0, y), (width, y), (255, 255, 255), 1)
+
+        # 세로선 그리기
+        for c in range(self.cols + 1):
+            x = int(c * cell_width)
+            cv2.line(grid_img, (x, 0), (x, height), (255, 255, 255), 1)
+
+        # 각 셀의 중앙 좌표 계산 후 초록색 점 표시
+        for r in range(self.rows):
+            for c in range(self.cols):
+                center_x = int((c + 0.5) * cell_width)
+                center_y = int((r + 0.5) * cell_height)
+                centers.append((center_x, center_y))
+                cv2.circle(grid_img, (center_x, center_y), 3, (0, 255, 0), -1)
+
+        return grid_img, centers
+
+# -----------------------------
+# 2. 전역 변수 및 기본 함수 정의
+# -----------------------------
+# 사용자가 클릭한 좌표(전체 화면 기준)를 저장할 리스트
+# (각 영역은 두 점으로 정의됨)
+points = []
 
 def on_click(x, y, button, pressed):
     """
     마우스 클릭 이벤트 콜백 함수.
-    6번 클릭하면 종료.
+    버튼이 눌릴 때 좌표를 points 리스트에 저장하고,
+    두 점이 입력되면 리스너를 종료합니다.
     """
     if pressed:
         print(f"클릭 위치: ({x}, {y})")
         points.append((x, y))
-        if len(points) == 6:
-            return False  # 리스너 종료
+        if len(points) == 2:
+            return False  # 2번 클릭 시 리스너 종료
 
 def get_region_from_points(pt_pair):
     """
-    두 점을 받아, MSS에 사용 가능한 영역 딕셔너리 반환.
-    예: {"left": x1, "top": y1, "width": w, "height": h}
+    두 점(pt_pair)을 받아, 좌측상단과 우측하단을 계산한 후,
+    MSS에서 사용할 영역 딕셔너리 {"left": 값, "top": 값, "width": 값, "height": 값}를 반환합니다.
     """
     (x1, y1), (x2, y2) = pt_pair
     left = min(x1, x2)
@@ -34,7 +81,7 @@ def get_region_from_points(pt_pair):
 
 def capture_region_image(region):
     """
-    mss를 사용하여 지정한 영역을 캡쳐한 이미지를 반환.
+    mss를 사용하여 지정한 영역(region)을 캡쳐한 이미지를 반환합니다.
     """
     with mss.mss() as sct:
         sct_img = sct.grab(region)
@@ -44,122 +91,94 @@ def capture_region_image(region):
 
 def show_region(region_name, region, image):
     """
-    영역 정보와 이미지를 표시.
+    영역 정보와 이미지를 OpenCV 창에 표시합니다.
     """
     print(f"{region_name} 영역: {region}")
     cv2.imshow(f"{region_name} 영역", image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def subdivide_and_draw_grid(image, rows, cols):
+def save_to_config_py(regions, grid_data, config_path="config.py"):
     """
-    image를 rows x cols 격자로 나누고,
-    각 셀의 중앙 좌표를 계산해 선 및 점을 그린 이미지를 반환.
+    regions: dict, 예: {"ROUND_RANGE": {...}, "GOLD_RANGE": {...}, "UNIT_RANGE": {...}}
+    grid_data: dict, UNIT_RANGE에 대한 그리드 정보, 예: {"UNIT_CELL_CENTERS": [...], "UNIT_CELL_STATUS": [...]}
+    config_path: 저장할 config.py의 경로
     """
-    height, width, _ = image.shape
-    cell_width = width / cols
-    cell_height = height / rows
-    grid_img = image.copy()
-    centers = []
-
-    # 가로선
-    for r in range(rows + 1):
-        y = int(r * cell_height)
-        cv2.line(grid_img, (0, y), (width, y), (255, 255, 255), 1)
-
-    # 세로선
-    for c in range(cols + 1):
-        x = int(c * cell_width)
-        cv2.line(grid_img, (x, 0), (x, height), (255, 255, 255), 1)
-
-    # 중앙점 계산
-    for r in range(rows):
-        for c in range(cols):
-            center_x = int((c + 0.5) * cell_width)
-            center_y = int((r + 0.5) * cell_height)
-            centers.append((center_x, center_y))
-            cv2.circle(grid_img, (center_x, center_y), 3, (0, 255, 0), -1)
-
-    return grid_img, centers
-
-def save_to_config_py(round_range, gold_range, unit_range, centers, config_path="config.py"):
-    """
-    전달받은 좌표(ROUND_RANGE, GOLD_RANGE, UNIT_RANGE)와
-    UNIT_RANGE의 18개 셀 중앙 좌표(centers)를 config.py에 저장.
-    """
-    # config.py를 덮어쓰기 모드로 연다.
     with open(config_path, "w", encoding="utf-8") as f:
         f.write("# config.py (자동 생성)\n\n")
-
-        # ROUND_RANGE, GOLD_RANGE, UNIT_RANGE
-        f.write(f"ROUND_RANGE = {round_range}\n")
-        f.write(f"GOLD_RANGE = {gold_range}\n")
-        f.write(f"UNIT_RANGE = {unit_range}\n\n")
-
-        # UNIT_CELL_CENTERS
-        f.write("UNIT_CELL_CENTERS = [\n")
-        for cx, cy in centers:
-            f.write(f"    ({cx}, {cy}),\n")
-        f.write("]\n\n")
-
-        # UNIT_CELL_STATUS (예: 처음에는 모두 False)
-        f.write(f"UNIT_CELL_STATUS = [False] * {len(centers)}\n")
-
-    print(f"\n[INFO] config.py가 생성(또는 갱신)되었습니다. 경로: {os.path.abspath(config_path)}")
+        f.write("REGIONS = {\n")
+        for name, region in regions.items():
+            f.write(f"    '{name}': {region},\n")
+        f.write("}\n\n")
+        if grid_data:
+            f.write("UNIT_CELL_CENTERS = [\n")
+            for center in grid_data.get("UNIT_CELL_CENTERS", []):
+                f.write(f"    {center},\n")
+            f.write("]\n\n")
+            status = grid_data.get("UNIT_CELL_STATUS", [])
+            f.write(f"UNIT_CELL_STATUS = {status}\n")
+    print(f"[INFO] config.py가 생성(또는 갱신)되었습니다. 경로: {os.path.abspath(config_path)}")
 
 # -----------------------------
-# 2. 메인 함수
+# 3. 메인 함수: 반복적으로 영역 정의 및 저장
 # -----------------------------
 def main():
-    print("총 6번의 클릭으로 3개의 영역(ROUND_RANGE, GOLD_RANGE, UNIT_RANGE)을 지정하세요.")
+    regions = {}      # 영역 이름: 영역 딕셔너리 (예: "ROUND_RANGE": {...})
+    grid_data = {}    # UNIT_RANGE 전용 그리드 정보 저장 (있을 경우)
 
-    # 마우스 리스너: 6번 클릭할 때까지 대기
-    with mouse.Listener(on_click=on_click) as listener:
-        listener.join()
+    print("영역을 정의하려면, 각 영역에 대해 두 점을 클릭하세요.")
+    print("각 영역이 정의된 후, 영역의 이름을 입력받습니다.")
+    print("종료하려면 영역 이름 입력 시 'q'를 입력하세요.\n")
 
-    # 좌표가 6개 미만이면 종료
-    if len(points) < 6:
-        print("6개의 좌표가 입력되지 않았습니다. 프로그램을 종료합니다.")
-        return
+    while True:
+        # 매 영역마다 points 리스트 초기화
+        del points[:]  # 리스트 초기화
 
-    print("입력된 좌표 (전체 화면 기준):", points)
+        print("영역 정의: 마우스로 두 점을 클릭하세요.")
+        with mouse.Listener(on_click=on_click) as listener:
+            listener.join()
 
-    # 2개씩 나눠 영역 추출
-    round_range_points = points[0:2]
-    gold_range_points  = points[2:4]
-    unit_range_points  = points[4:6]
+        if len(points) < 2:
+            print("두 점이 입력되지 않았습니다. 다시 시도하세요.")
+            continue
 
-    # 딕셔너리 형태로 변환
-    round_range = get_region_from_points(round_range_points)
-    gold_range  = get_region_from_points(gold_range_points)
-    unit_range  = get_region_from_points(unit_range_points)
+        # 영역 딕셔너리 생성
+        region = get_region_from_points(points)
 
-    print("ROUND_RANGE =", round_range)
-    print("GOLD_RANGE  =", gold_range)
-    print("UNIT_RANGE  =", unit_range)
+        # 현재 정의된 영역을 캡쳐해서 미리보기
+        region_img = capture_region_image(region)
+        show_region("미리보기", region, region_img)
 
-    # 영역별 캡쳐
-    round_img = capture_region_image(round_range)
-    gold_img  = capture_region_image(gold_range)
-    unit_img  = capture_region_image(unit_range)
+        # 영역 이름 입력 (사용자가 종료할 때까지)
+        region_name = input("이 영역의 이름을 입력하세요 (종료하려면 'q' 입력): ").strip()
+        if region_name.lower() == 'q':
+            print("영역 정의를 종료합니다.")
+            break
 
-    # 영역 표시
-    # show_region("ROUND_RANGE", round_range, round_img)
-    # show_region("GOLD_RANGE",  gold_range,  gold_img)
+        regions[region_name] = region
+        print(f"'{region_name}' 영역이 저장되었습니다.\n")
 
-    # UNIT_RANGE → 3행 × 6열로 나누고 격자/중앙점 표시
-    rows, cols = 3, 6
-    grid_img, centers = subdivide_and_draw_grid(unit_img, rows, cols)
+        # 만약 영역 이름이 UNIT_RANGE라면, 3행×6열로 18개 셀로 분할하여 그리드 생성
+        if region_name.upper() == "UNIT_RANGE":
+            # UNIT_RANGE 영역 이미지 재캡쳐 (이미 충분히 정확한 영역이라 가정)
+            unit_img = capture_region_image(region)
+            # RegionGrid 클래스 사용 (3행 x 6열)
+            grid = RegionGrid(unit_img, 3, 6)
+            grid_img, centers = grid.subdivide()
+            print("UNIT_RANGE를 3행 x 6열로 나눈 각 셀의 중앙 좌표 (로컬 기준):")
+            for i, center in enumerate(centers, start=1):
+                print(f"{i}번 셀: {center}")
+            show_region("UNIT_RANGE (격자)", region, grid_img)
+            grid_data["UNIT_CELL_CENTERS"] = centers
+            grid_data["UNIT_CELL_STATUS"] = [False] * len(centers)
 
-    print("UNIT_RANGE를 3행 x 6열로 나눈 각 셀의 중앙 좌표 (로컬 기준):")
-    for i, center in enumerate(centers, start=1):
-        print(f"{i}번 셀: {center}")
+        cont = input("다른 영역을 정의하시겠습니까? (y/n): ").strip().lower()
+        if cont != 'y':
+            break
 
-    # show_region("UNIT_RANGE (격자)", unit_range, grid_img)
-
-    # config.py에 저장
-    save_to_config_py(round_range, gold_range, unit_range, centers, config_path="../config/config.py")
-
+    # config.py에 저장 (config.py 파일 경로는 필요에 따라 수정)
+    save_to_config_py(regions, grid_data, config_path="../config/new_config.py")
+    print("프로그램을 종료합니다.")
 
 if __name__ == "__main__":
     main()
