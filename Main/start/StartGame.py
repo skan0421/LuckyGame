@@ -1,15 +1,13 @@
-# BeforeStartGame.pyimport time
 import time
-
-from util.util import (capture_region_image, capture_text_from_region,
-                       extract_number_from_region, find_image_on_screen,
+from util.util import (extract_number_from_region, find_image_on_screen,
                        click_regions)
 from config import config
 
+
+# 게임 시작 전 작업 수행 (BeforeStartGame.py의 내용)
 def main():
-    # 예시: main.png 템플릿 탐색 및 START 버튼 클릭
-    main_template = r"C:/Users/user/Desktop/LuckyG/config/unit_image/main.png"
-    found_main = find_image_on_screen(main_template, threshold=0.8)
+    # 1. main.png 템플릿 탐색 및 START 버튼 클릭
+    found_main = find_image_on_screen(config.MAIN_TEMPLATE, threshold=0.8)
     if found_main is None:
         print("main.png 템플릿이 화면에서 발견되지 않았습니다.")
         return
@@ -18,9 +16,8 @@ def main():
         click_regions(['START'])
         time.sleep(1)
 
-    # 예시: buy_energy.png 템플릿 탐색 후, BUY_ENERGY 영역의 숫자 추출
-    buy_energy_template = r"C:/Users/user/Desktop/LuckyG/config/unit_image/buy_energy.png"
-    found_buy = find_image_on_screen(buy_energy_template, threshold=0.8)
+    # 2. buy_energy.png 템플릿 탐색 후 BUY_ENERGY 영역의 숫자 추출
+    found_buy = find_image_on_screen(config.BUY_ENERGY_TEMPLATE, threshold=0.8)
     if found_buy is None:
         print("buy_energy.png 템플릿이 화면에서 발견되지 않았습니다.")
         return
@@ -35,5 +32,14 @@ def main():
             sequence = ['START', 'BUY_ENERGY_SURE', 'CB_BUY_ENERGY', 'CB_UPGRADE', 'START']
             click_regions(sequence)
 
+
 if __name__ == "__main__":
+    # 게임 시작 전 작업 실행
     main()
+    print("게임 시작 전 작업 완료. 게임 시작 후 10초 대기합니다...")
+    time.sleep(10)
+
+    print("getLegendThread 실행됨. 메인 스레드는 계속 대기합니다.")
+    # 메인 스레드가 종료되지 않도록 무한 대기
+    while True:
+        time.sleep(1)
