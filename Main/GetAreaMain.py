@@ -64,7 +64,7 @@ def on_click(x, y, button, pressed):
     if pressed:
         print(f"클릭 위치: ({x}, {y})")
         points.append((x, y))
-        if len(points) == 2:
+        if len(points) == 5:
             return False  # 2번 클릭 시 리스너 종료
 
 def get_region_from_points(pt_pair):

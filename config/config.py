@@ -1,5 +1,6 @@
 # config.py (자동 생성)
 import os
+
 GAME_STATED = False
 # ─── 프로젝트 루트 & 이미지 폴더 경로 ────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -50,16 +51,18 @@ ERROR_TEMPLATE = os.path.join(UNIT_IMAGE_DIR, "matchingfailed.png")
 GAME_END_TEMPLATE = os.path.join(UNIT_IMAGE_DIR, "GameEnd.png")
 PACKAGE_TEMPLATE = os.path.join(UNIT_IMAGE_DIR, "package.png")
 CLOSE_PACKAGE_TEMPLATE = os.path.join(UNIT_IMAGE_DIR, "back.png")
+MORE_REWARD_TEMPLATE = os.path.join(UNIT_IMAGE_DIR, "more_reward.png")
 GO_LOBBY = (2977, 920)
 ReGame = ()
+GAME_STARTED = False
 
 
-#GameFunctions
+# GameFunctions
 summon_button_template = os.path.join(UNIT_IMAGE_DIR, "summon.png")
 empty_template_path1 = os.path.join(UNIT_IMAGE_DIR, "emptyCell1.png")
 empty_template_path2 = os.path.join(UNIT_IMAGE_DIR, "emptyCell2.png")
 closeRoulette = (3080, 726)
-closeEnhance = (11,11)
+closeEnhance = (11, 11)
 heroRoulette = (2862, 843)
 epicRoulette = (2991, 846)
 
@@ -132,6 +135,11 @@ SYNTHESIS_CENTERS = {
     18: (3032, 712),
 }
 
+DUNGEON = {
+    1: (2730, 331),
+    2: (2705, 367),
+    3: (2728, 406),
+}
 
 REGIONS = {
     # 'ENERGY': {'left': 2898, 'top': 33, 'width': 122, 'height': 39},

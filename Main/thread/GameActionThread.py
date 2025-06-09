@@ -43,7 +43,7 @@ def action_thread(stop_event):
             if stop_event.wait(1): break
             functions.placement(stop_event)
             if stop_event.wait(1): break
-            functions.hero_roulette(elapsed_time=elapsed,stop_event=stop_event)
+            functions.hero_roulette(elapsed_time=elapsed, stop_event=stop_event)
             if stop_event.wait(1): break
             last_trigger_times["30"] = True
             thread_manager.start_thread("ChallengeThread", ChallengeThread.boss_thread)
@@ -53,11 +53,11 @@ def action_thread(stop_event):
             print("🕒 120초: 뽑기 > 배치 > 뽑기")
             thread_manager.stop_thread("ChallengeThread")
             if stop_event.wait(1): break  # 스레드 종료 기다리기
-            functions.hero_roulette(elapsed_time=elapsed,stop_event=stop_event)
+            functions.hero_roulette(elapsed_time=elapsed, stop_event=stop_event)
             if stop_event.wait(1): break
             functions.placement(stop_event)
             if stop_event.wait(1): break
-            functions.hero_roulette(elapsed_time=elapsed,stop_event=stop_event)
+            functions.hero_roulette(elapsed_time=elapsed, stop_event=stop_event)
             if stop_event.wait(1): break
             last_trigger_times["120"] = True
             thread_manager.start_thread("ChallengeThread", ChallengeThread.boss_thread)
@@ -68,9 +68,9 @@ def action_thread(stop_event):
             thread_manager.stop_thread("ChallengeThread")
             if stop_event.wait(1): break  # 스레드 종료 기다리기
             enforce_call_count += 1  # 🔥 enforce 호출 카운트 증가
-            functions.hero_roulette(elapsed_time=elapsed,stop_event=stop_event)
+            functions.hero_roulette(elapsed_time=elapsed)
             if stop_event.wait(1): break
-            functions.enforce(is_first_call=(enforce_call_count == 1),stop_event=stop_event)  # 🔥 첫 호출만 True
+            functions.enforce(is_first_call=(enforce_call_count == 1))  # 🔥 첫 호출만 True
             if stop_event.wait(1): break
             functions.summon(stop_event)
             if stop_event.wait(1): break
@@ -91,7 +91,7 @@ def action_thread(stop_event):
                     thread_manager.stop_thread("ChallengeThread")
                     if stop_event.wait(1): break  # 스레드 종료 기다리기
                     enforce_call_count += 1  # 🔥 반복 enforce 호출 카운트 증가
-                    functions.hero_roulette(elapsed_time=elapsed,stop_event=stop_event)
+                    functions.hero_roulette(elapsed_time=elapsed)
                     if stop_event.wait(1): break
                     functions.summon(stop_event)
                     if stop_event.wait(1): break
@@ -103,7 +103,7 @@ def action_thread(stop_event):
                     thread_manager.stop_thread("ChallengeThread")
                     if stop_event.wait(1): break  # 스레드 종료 기다리기
                     enforce_call_count += 1
-                    functions.enforce(is_first_call=(enforce_call_count == 1),stop_event=stop_event)
+                    functions.enforce(is_first_call=(enforce_call_count == 1))
                     if stop_event.wait(1): break
                     thread_manager.start_thread("ChallengeThread", ChallengeThread.boss_thread)
                 last_trigger_times["loop"] = elapsed
